@@ -5,10 +5,33 @@ import pandas as pd
 
 st.set_page_config(page_title="NER App", layout="wide")
 
+# Add more names here, one per line. Multi-word names are allowed.
+KNOWN_NAMES = [
+    "Claudine",
+    "Immaculee",
+    "Emmanuel",
+    "Eric",
+    "Aline",
+    "Jean Claude",
+    "Uwase",
+    "Mukamana",
+    "Habimana",
+]
+
 
 @st.cache_resource
 def load_model():
-    return spacy.load("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+    ruler = nlp.add_pipe("entity_ruler", before="ner")
+    patterns = []
+    for name in KNOWN_NAMES:
+        words = [{"LOWER": w.lower()} for w in name.split()]
+        # the optional last token lets "Claudine Uwase" match as one name
+        patterns.append(
+            {"label": "PERSON", "pattern": words + [{"IS_TITLE": True, "OP": "?"}]}
+        )
+    ruler.add_patterns(patterns)
+    return nlp
 
 
 nlp = load_model()
@@ -36,7 +59,10 @@ LABELS = {
 
 st.title("Named Entity Recognition")
 st.write("Paste some text to see the people, places, organizations and dates that spaCy finds.")
-st.caption("Model: spaCy en_core_web_sm (small English model). It can miss names and mislabel some entities.")
+st.caption(
+    "Model: spaCy en_core_web_sm plus a list of known names (always labeled PERSON). "
+    "Names that are not on the list can still be missed."
+)
 
 with st.sidebar:
     st.header("What the labels mean")
@@ -45,7 +71,7 @@ with st.sidebar:
 
 text = st.text_area(
     "Paste some text:",
-    "Claudine studies at the University of Rwanda in Kigali. Paul Kagame spoke on Monday.",
+    "Claudine Uwase studies at the University of Rwanda in Kigali. Paul Kagame spoke on Monday.",
     height=150,
 )
 
